@@ -1,0 +1,9 @@
+# tools
+mpremote
+esptool
+pyyaml
+
+# libs
+bleak
+pyserial
+requests

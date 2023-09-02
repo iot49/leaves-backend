@@ -1,3 +1,16 @@
+# local
+micropython
+micropython-lib
+.direnv
+
+# don't commit for now
+scripts
+code
+code-freeze
+
+# MacOS desktop metadata files
+.DS_Store
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -14,7 +27,6 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
 lib64/
 parts/
 sdist/
