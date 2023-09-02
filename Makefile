@@ -18,15 +18,17 @@ build:
 	ls -l micropython/ports/esp32/build-{BOARD}/*bin
 
 # update version in code-freeze to today's date
-version: check
+version: # check
 	echo Update 'code-freeze/version.py', tag repo and push
 	@git switch main
 	@echo \# automatically updated by Makefile >code-freeze/version.py
 	@echo VERSION = \"$(TAG)\" >>code-freeze/version.py
-	@git tag $(TAG) main
-	@git commit -am "update version to $(TAG)"
-	@git push origin main
-	@git push origin $(TAG)
+	-git tag $(TAG) main; \
+		git commit -am "update version to $(TAG)"; \
+		git push origin $(TAG); \
+		echo push; \
+		git push origin main
+	echo done
 
 # check that all changes in micropython and backend repos have been committed and pushed to github
 check:
@@ -48,7 +50,7 @@ check:
 		echo "Commit and push all changes to github and try make again."; \
 		exit 1; \
 	fi
-	if [[ -n `git diff --stat --cached origin/main` ]]; then \
+	@if [[ -n `git diff --stat --cached origin/main` ]]; then \
 		echo "'backend' repo has commits that have not been pushed."; \
 		echo "Push all changes to github and try make again."; \
 		exit 1; \
