@@ -1,16 +1,11 @@
 .PHONY: version build
 
 # micropython repo branch
+TAG    := `date +"%Y.%m.%d"`
 BRANCH := mp
 BOARD  := ESP32-S3-WROOM-1-N16R8
 SHELL  := /bin/bash
 
-
-# clone and configure Micropython repo
-micropython:
-	git clone https://github.com/iot49/micropython.git
-	cd micropython/mpy-cross; make
-	cd micropython/ports/esp32; make submodules
 
 # build custom Micropython VM with code-freeze built in
 build:
@@ -24,8 +19,14 @@ build:
 
 # update version in code-freeze to today's date
 version: check
+	echo Update 'code-freeze/version.py', tag repo and push
+	@git switch main
 	@echo \# automatically updated by Makefile >code-freeze/version.py
-	@echo VERSION = \"`date +"%Y.%m.%d"`\" >>code-freeze/version.py
+	@echo VERSION = \"$(TAG)\" >>code-freeze/version.py
+	@git tag $(TAG) main
+	@git commit -am "update version to $(TAG)"
+	@git push origin main
+	@git push origin $(TAG)
 
 # check that all changes in micropython and backend repos have been committed and pushed to github
 check:
@@ -52,3 +53,10 @@ check:
 		echo "Push all changes to github and try make again."; \
 		exit 1; \
 	fi
+
+# clone and configure Micropython repo
+micropython:
+	git clone https://github.com/iot49/micropython.git
+	cd micropython/mpy-cross; make
+	cd micropython/ports/esp32; make submodules
+
