@@ -23,12 +23,10 @@ version: # check
 	@git switch main
 	@echo \# automatically updated by Makefile >code-freeze/version.py
 	@echo VERSION = \"$(TAG)\" >>code-freeze/version.py
-	-git tag $(TAG) main; \
-		git commit -am "update version to $(TAG)"; \
-		git push origin $(TAG); \
-		echo push; \
-		git push origin main
-	echo done
+	-git tag $(TAG) main
+	@git commit -am "update version to $(TAG)"
+	@git push origin $(TAG)
+	@git push origin main
 
 # check that all changes in micropython and backend repos have been committed and pushed to github
 check:
