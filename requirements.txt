@@ -2,6 +2,8 @@
 mpremote
 esptool
 pyyaml
+jupyterlab
+iot-kernel
 
 # libs
 bleak

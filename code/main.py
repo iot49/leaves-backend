@@ -1,0 +1,1 @@
+print('-'*50, "DEV: do not start app!")

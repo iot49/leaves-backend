@@ -1,12 +1,19 @@
-# local
+# don't commit for now
+jupyter
+LEGACY-CODE
+default_config.py
+default-config
+stuff
+firmware
+bin
+Makefile
+
+# leaf
 micropython
 micropython-lib
+devices
+scratch
 .direnv
-
-# don't commit for now
-scripts
-code
-code-freeze
 
 # MacOS desktop metadata files
 .DS_Store
