@@ -1,3 +1,6 @@
+secrets.yaml
+default_config.py
+
 # don't commit for now
 jupyter
 LEGACY-CODE

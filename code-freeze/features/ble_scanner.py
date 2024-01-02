@@ -45,11 +45,11 @@ async def parse_victron(data, dev, mac, device):
     if device == None:
         m = _VICTRON_MODEL.get(model)
         if m == None: return
-        config.set(f'discover/{mac}', {
+        # config.set?  
+        print(f'discover/{mac}', {
             'alias': m,
             'key': '0123456789abcdef0123456789abcdef',
         })
-
         return
     
     try:

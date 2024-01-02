@@ -1,24 +1,26 @@
-# default: 
-#       start the app
+import machine   # type: ignore
 
-# development mode: 
-#       create a custom /main.py that 
-#       will be executed instead of starting the app
+RESET_CAUSE = {
+    machine.PWRON_RESET: 'power-on',
+    machine.HARD_RESET: 'hard reset',
+    machine.WDT_RESET: 'watchdog timer',
+    machine.DEEPSLEEP_RESET: 'deepsleep reset',
+    machine.SOFT_RESET: 'soft reset'
+}
 
-try:
+print("reset-cause:", RESET_CAUSE.get(machine.reset_cause(), machine.reset_cause()))
 
-    print("NOTE: try starting app from /main.py")
-    open("/main.py")      # OSError if file does not exist
-    __import__("main")    # import /main.py
-
-except Exception:
-
-    print("NOTE: failed loading /main.py ... normal app start from frozen main.py")
-
-    import asyncio
-    from app import main
-
-    asyncio.run(main())
-    asyncio.new_event_loop()
-
-    print("FATAL: frozen main.py returned (wdt?)")
+if machine.reset_cause == machine.SOFT_RESET:
+    print("soft reset - exiting to REPL")
+else:    
+    try:
+        open("/main.py")      # OSError if file does not exist
+        print("starting from /main.py")
+        __import__("main")    # import /main.py
+    except Exception:
+        import asyncio
+        from app import main
+        print("starting from frozen main.py")
+        asyncio.run(main())
+        asyncio.new_event_loop()
+    print("exiting to REPL")
