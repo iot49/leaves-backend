@@ -10,17 +10,15 @@ RESET_CAUSE = {
 
 print("reset-cause:", RESET_CAUSE.get(machine.reset_cause(), machine.reset_cause()))
 
-if machine.reset_cause == machine.SOFT_RESET:
-    print("soft reset - exiting to REPL")
-else:    
-    try:
-        open("/main.py")      # OSError if file does not exist
-        print("starting from /main.py")
-        __import__("main")    # import /main.py
-    except Exception:
+print("soft reset - exiting to REPL")
+
+if False:
+    if machine.reset_cause == machine.SOFT_RESET:
+        print("soft reset - exiting to REPL")
+    else:    
         import asyncio
         from app import main
         print("starting from frozen main.py")
         asyncio.run(main())
         asyncio.new_event_loop()
-    print("exiting to REPL")
+        print("exiting to REPL")

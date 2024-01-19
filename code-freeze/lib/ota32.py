@@ -43,15 +43,14 @@ class OTA:
     # load app into the next partition and set it as the next one to boot upon restart
     #     :param:  url
     #     :sha256: sha256
-    async def ota(self, url, sha256):
-        
+    async def ota(self, url, sha256):    
         logger.debug(f"OTA flash {url}")
         buffer = bytearray(__BLOCKLEN)
         mv = memoryview(buffer)
         try:
             sock = urlopen(url)
-        except OSError:
-            await self._progress_cb(status='not found')
+        except OSError as e:
+            await self._progress_cb(status=f'not found: {e}')
             return
         size = 0
         try:

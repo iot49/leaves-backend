@@ -96,6 +96,8 @@ class _Wifi:
                 if VERBOSE: print('.', end='')
             else:
                 if VERBOSE: print()
+                # DO SOMETHING ABOUT IT!
+                # red led, retry, ...
                 raise WifiException(f"Failed connecting to {ssid}")
             if VERBOSE: print()
             logger.info(f"connected @ {self.ip} in {n/100}s")
