@@ -94,7 +94,6 @@ class BLEPeripheral:
 
     async def close(self):
         # Compatibility with websocket
-        print(f"BlePeripheral disconnected from {self._connection.device}")
         self._connection = None
 
     @property
@@ -155,20 +154,21 @@ class BLEPeripheral:
                     logger.exception("_send_task", e)
 
     async def _handle_connection(self):
-        print("BlePeripheral connected from", self._connection, self._connection.device)
         try:
             self._mtu = await self._connection.exchange_mtu(_DESIRED_MTU)
             asyncio.create_task(self._send_task())
             asyncio.create_task(self._recv_task())
 
+            # https://github.com/orgs/micropython/discussions/10509
+            # jimmo on Jan 16, 2023
+            # Pairing (&bonding) is supported on ESP32 in the nightly builds (and the upcoming v1.20, but not in v1.19).
+            # https://winaero.com/enable-or-disable-bluetooth-device-permissions-in-google-chrome/
+
+            print(f"pair (with bonding), encrypted={self._connection.encrypted}, key_size={self._connection.key_size}")
+            await self._connection.pair(bond=True)
+            print(f"pairing complete, encrypted={self._connection.encrypted}, key_size={self._connection.key_size}")
+
             asyncio.create_task(event_io.serve(self))
-            # await event_io.serve(self)
-
-            # STRANGE things happen on Mac when pairing ...
-            # print(f"pair (no bonding), encrypted={connection.encrypted}, key_size={connection.key_size}")
-            # await connection.pair(bond=False)
-            # print(f"pairing complete, encrypted={connection.encrypted}, key_size={connection.key_size}")
-
             # wait for disconnect
             await self._connection.disconnected(timeout_ms=None)
         except Exception as e:
@@ -178,7 +178,6 @@ class BLEPeripheral:
 
 
 ble_peripheral = BLEPeripheral()
-
 
 def init():
     async def _main():

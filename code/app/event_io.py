@@ -21,11 +21,12 @@ class EventIO:
     _next_client_id = 0
 
     def __init__(self, ws):
+        # ws: a websocket or something implementing the same interface (ble_peripheral)
         self._ws = ws
         EventIO._next_client_id += 1
         self._client_id = f'event-io-{EventIO._next_client_id}'
-        print(f"{'-'*20} new connection from {self._client_id}")
-        logger.info(f"{'-'*20} new connection from {self._client_id}")
+        print(f"{'-'*20} new connection {self._client_id} from {type(ws).__name__}")
+        logger.info(f"{'-'*20} new connection {self._client_id} from {type(ws).__name__}")
         # save bound method for later unsubscribe
         # Note: self._send produces different object each time it is called!
         self._susbscriber = self._send
