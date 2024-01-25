@@ -45,7 +45,7 @@ def request(
     parse_headers=True,
 ):
     redirect = None  # redirection url, None means no redirection
-    chunked_data = data and getattr(data, "__iter__", None) and not getattr(data, "__len__", None)
+    chunked_data = data and getattr(data, "__next__", None) and not getattr(data, "__len__", None)
 
     if auth is not None:
         import ubinascii
@@ -92,7 +92,7 @@ def request(
         if proto == "https:":
             s = ussl.wrap_socket(s, server_hostname=host)
         s.write(b"%s /%s HTTP/1.0\r\n" % (method, path))
-        if not "Host" in headers:
+        if "Host" not in headers:
             s.write(b"Host: %s\r\n" % host)
         # Iterate over keys to avoid tuple alloc
         for k in headers:
@@ -194,3 +194,6 @@ def patch(url, **kw):
 
 def delete(url, **kw):
     return request("DELETE", url, **kw)
+
+
+__version__ = '0.8.1'

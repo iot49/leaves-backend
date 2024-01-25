@@ -454,3 +454,6 @@ class ClientDescriptor(BaseClientCharacteristic):
             characteristic._value_handle,
             characteristic._end_handle,
         )
+
+
+__version__ = '0.3.0'

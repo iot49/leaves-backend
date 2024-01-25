@@ -1,7 +1,7 @@
 from micropython import const
 import bluetooth   # type: ignore
+import aioble      # type: ignore
 import asyncio
-import aioble
 import struct
 import logging
 from io import BytesIO
@@ -12,10 +12,11 @@ from features.wifi import wifi
 
 
 _DESIRED_MTU      = const(512)   # maximum permitted
+
 _MTU_OVERHEAD     = const(3)     # send overhead in bytes
 
 _ADV_APPEARANCE_GENERIC_COMPUTER = const(128)
-_ADV_MANUFACTURER = const(0x1234)
+_ADV_MANUFACTURER = const(0xa748)
 _ADV_TIMEOUT_MS   = const(1000)
 _ADV_INTERVAL_US  = const(250_000)
 
@@ -43,9 +44,8 @@ class BLEPeripheral:
         aioble.config(mtu=_DESIRED_MTU)
         service = aioble.Service(_SERVICE_UUID)
         self._connection = None
-        # is there a use for max_len > mtu?
-        self._rx_characteristic = aioble.BufferedCharacteristic(service, _SERVICE_RX, max_len=2*_DESIRED_MTU, indicate=True, write=True, capture=True)
-        self._tx_characteristic = aioble.BufferedCharacteristic(service, _SERVICE_TX, max_len=2*_DESIRED_MTU, indicate=True, read=True)
+        self._rx_characteristic = aioble.BufferedCharacteristic(service, _SERVICE_RX, max_len=_DESIRED_MTU, indicate=True, write=True, capture=True)
+        self._tx_characteristic = aioble.BufferedCharacteristic(service, _SERVICE_TX, max_len=_DESIRED_MTU, indicate=True, read=True)
         aioble.register_services(service)
 
     async def run(self):
@@ -54,19 +54,16 @@ class BLEPeripheral:
             # manufacturer data: wifi ip, channel
             manuf_data = struct.pack('!4sB', wifi.ip_bytes, wifi.channel)
             try:
-                connection = await aioble.advertise(
+                async with await aioble.advertise(
                     connectable=not self.connected,
                     timeout_ms=_ADV_TIMEOUT_MS,
                     interval_us=_ADV_INTERVAL_US,
                     services=[_SERVICE_UUID],
                     appearance=_ADV_APPEARANCE_GENERIC_COMPUTER,
                     manufacturer=[_ADV_MANUFACTURER, manuf_data]
-                )
-                self._connection = connection
-                self._rx_buffer = deque((), _RX_QUEUE_SZ, 1)
-                self._tx_buffer = deque((), _TX_QUEUE_SZ, 1)
-
-                asyncio.create_task(self._handle_connection())
+                ) as connection:
+                    print("connection from", connection.device)
+                    asyncio.create_task(self._handle_connection(connection))
             except asyncio.TimeoutError:
                 # timeout regularly to update the wifi channel (in case it has changed)
                 pass
@@ -153,16 +150,26 @@ class BLEPeripheral:
                 except Exception as e:
                     logger.exception("_send_task", e)
 
-    async def _handle_connection(self):
+    async def _handle_connection(self, connection):
         try:
-            self._mtu = await self._connection.exchange_mtu(_DESIRED_MTU)
+            if self.connected:
+                print("***** ble_peripheral._handle_connection - ALREADY connected", self._connection.device, connection)
+                raise ValueError("***** ble_peripheral._handle_connection - ALREADY connected", self._connection.device, connection)
+            self._connection = connection
+
+            self._rx_buffer = deque((), _RX_QUEUE_SZ, 1)
+            self._tx_buffer = deque((), _TX_QUEUE_SZ, 1)
+
             asyncio.create_task(self._send_task())
             asyncio.create_task(self._recv_task())
 
+            self._mtu = await self._connection.exchange_mtu(_DESIRED_MTU)
+
+            # https://www.allaboutcircuits.com/technical-articles/understanding-bluetooth-le-pairingstep-by-step/
+            # https://winaero.com/enable-or-disable-bluetooth-device-permissions-in-google-chrome/
             # https://github.com/orgs/micropython/discussions/10509
             # jimmo on Jan 16, 2023
             # Pairing (&bonding) is supported on ESP32 in the nightly builds (and the upcoming v1.20, but not in v1.19).
-            # https://winaero.com/enable-or-disable-bluetooth-device-permissions-in-google-chrome/
 
             print(f"pair (with bonding), encrypted={self._connection.encrypted}, key_size={self._connection.key_size}")
             await self._connection.pair(bond=True)
@@ -170,9 +177,13 @@ class BLEPeripheral:
 
             asyncio.create_task(event_io.serve(self))
             # wait for disconnect
-            await self._connection.disconnected(timeout_ms=None)
+            print("ble_peripheral await disconnected")
+            await self._connection.disconnected(None)
         except Exception as e:
             logger.exception("_handle_connection", e)
+            print("***** ble_p", e)
+            import sys
+            sys.print_exception(e)
         finally:
             self.close()
 
@@ -188,3 +199,6 @@ def init():
 
     asyncio.create_task(_main())
 
+print("??? ble_peripheral stopped working (after working fine for a day or two)")
+# print("ble_peripheral - check into subscribe (e.g. for indicate)")
+# print("ble_peripheral - seems (?) to work without")

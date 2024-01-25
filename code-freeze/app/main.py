@@ -3,6 +3,7 @@ import sys
 import logging
 import machine   # type: ignore
 import esp32     # type: ignore
+import micropython
 
 from .config import config
 from .eid import IS_GATEWAY, NODE_ID
@@ -37,6 +38,9 @@ def config_logging():
     root_logger.handlers = []
     root_logger.addHandler(LogHandler())
 
+
+micropython.alloc_emergency_exception_buf(200)
+
 config_logging()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -60,10 +64,10 @@ def load_feature(feature, params):
     if module:        
         try:
             module.init(**params)
-        except TypeError as e:
-            logger.error(f"feature {feature}: {e}")
         except AttributeError as e:
             if params: logger.error(f"feature {feature}: {e}")
+        except (TypeError, Exception) as e:
+            logger.exception(f"feature {feature}: {e}")
     else:
         logger.error(f"no such feature: {feature}")
 
@@ -89,6 +93,7 @@ async def main():
             load_feature(feature, params or {})
 
         # reset cause
+        logger.info(f"reset cause: {RESET_CAUSE.get(machine.reset_cause(), 'unknown')}")
         print(f"reset cause: {RESET_CAUSE.get(machine.reset_cause(), 'unknown')}")
 
         # since we got here, we assume the app is working

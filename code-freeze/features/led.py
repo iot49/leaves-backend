@@ -45,6 +45,7 @@ class _LED:
         self.pattern = self.GREEN_BLINK_SLOW
 
     async def run(self):
+        print("led.run")
         n = -1
         while True:
             n = (n+1) % len(self.pattern)
@@ -58,6 +59,7 @@ class _LED:
 # create led singleton
 led = _LED()
 
+print("LED!")
 # start blink task
 asyncio.create_task(led.run())
 

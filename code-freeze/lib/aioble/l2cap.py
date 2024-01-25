@@ -212,3 +212,6 @@ async def connect(connection, psm, mtu, timeout_ms):
             return channel
         else:
             raise L2CAPConnectionError(channel._status)
+
+
+__version__ = '0.2.0'

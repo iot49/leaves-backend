@@ -295,3 +295,6 @@ class scan:
             await self._event.wait()
         global _active_scanner
         _active_scanner = None
+
+
+__version__ = '0.2.1'

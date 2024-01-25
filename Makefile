@@ -1,4 +1,4 @@
-.PHONY: check version build lib firmware flash micropython
+.PHONY: check version build build-generic lib firmware flash micropython
 
 SHELL           := /bin/bash
 TAG             := $(shell date +"%Y.%m.%d")
@@ -44,6 +44,23 @@ build: version
 				USER_C_MODULES=${USER_C_MODULES} \
 				FROZEN_MANIFEST=${FROZEN_MANIFEST}"
 
+# generic Micropython VM for esp32
+build-generic:
+	@echo mpy-cross
+	docker run --rm -v .:/project -w /project espressif/idf:v5.0.4 \
+		bash -c " \
+			cd micropython; \
+			make V=1 -C mpy-cross; \
+		"
+	@echo esp32/generic
+	docker run --rm -v .:/project -w /project espressif/idf:v5.0.4 \
+		bash -c " \
+			cd micropython/ports/esp32; \
+			make clean IDF_TARGET=esp32s3; \
+			make submodules; \
+			make V=1 IDF_TARGET=esp32s3; \
+		"
+
 # update version in code-freeze to today's date
 version:
 	echo Update 'code-freeze/version.py' to $(TAG), tag repo and push
@@ -67,18 +84,28 @@ update-micropython: micropython
 
 
 # download libraries
-
-TARGET := code/lib
+TARGET := code
+# TARGET := code/lib/microdot
 MPY    := micropython/ports/unix/build-standard/micropython -m mip install --no-mpy --target ${TARGET}
 
 lib:
+	${MPY} requests
+	${MPY} ntptime
+
+lib2:
 	${MPY} urllib.urequest
-	# BUG: ??? installs old version ???
-	# ${MPY} aioble
+	${MPY} aioble
 
 lib-update:
 	# microdot webserver
-	${MPY} github:miguelgrinberg/microdot/src/microdot.py
-	${MPY} github:miguelgrinberg/microdot/src/microdot_websocket.py
-	${MPY} github:miguelgrinberg/microdot/src/microdot_asyncio.py
-	${MPY} github:miguelgrinberg/microdot/src/microdot_asyncio_websocket.py
+	${MPY} github:miguelgrinberg/microdot/src/microdot/__init__.py
+	${MPY} github:miguelgrinberg/microdot/src/microdot/microdot.py
+	${MPY} github:miguelgrinberg/microdot/src/microdot/websocket.py
+	${MPY} github:miguelgrinberg/microdot/src/microdot/session.py
+	${MPY} github:miguelgrinberg/microdot/src/microdot/asgi.py
+	${MPY} github:miguelgrinberg/microdot/src/microdot/wsgi.py
+	${MPY} github:miguelgrinberg/microdot/src/microdot/sse.py
+	${MPY} github:miguelgrinberg/microdot/src/microdot/cors.py
+	${MPY} github:miguelgrinberg/microdot/src/microdot/jinja.py
+	${MPY} github:miguelgrinberg/microdot/src/microdot/utemplate.py
+	${MPY} github:miguelgrinberg/microdot/src/microdot/test_client.py

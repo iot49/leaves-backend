@@ -328,5 +328,10 @@ from esp32 import Partition    # type: ignore
 def init(partition='data_1'):
     global db, bdev
     bdev = Partition.find(type=Partition.TYPE_DATA, label=partition)[0]
-    db = TSDB(bdev)
-
+    try:
+        db = TSDB(bdev)
+    except TSDBException as e:
+        logger.exception("Failed initializing tsdb - creating new one", e)
+        bdev = Partition.find(type=Partition.TYPE_DATA, label='data_1')[0]
+        TSDB.make_db(bdev, 4096)
+        db = TSDB(bdev)

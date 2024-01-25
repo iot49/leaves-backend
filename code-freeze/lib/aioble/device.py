@@ -293,3 +293,6 @@ class DeviceConnection:
 
     async def __aexit__(self, exc_type, exc_val, exc_traceback):
         await self.disconnect()
+
+
+__version__ = '0.2.0'

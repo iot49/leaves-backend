@@ -1,9 +1,20 @@
 import binascii
 import hashlib
-from microdot import Response
+from microdot import Request, Response
+from microdot.microdot import MUTED_SOCKET_ERRORS, print_exception
+
+
+class WebSocketError(Exception):
+    """Exception raised when an error occurs in a WebSocket connection."""
+    pass
 
 
 class WebSocket:
+    """A WebSocket connection object.
+
+    An instance of this class is sent to handler functions to manage the
+    WebSocket connection.
+    """
     CONT = 0
     TEXT = 1
     BINARY = 2
@@ -11,37 +22,59 @@ class WebSocket:
     PING = 9
     PONG = 10
 
+    #: Specify the maximum message size that can be received when calling the
+    #: ``receive()`` method. Messages with payloads that are larger than this
+    #: size will be rejected and the connection closed. Set to 0 to disable
+    #: the size check (be aware of potential security issues if you do this),
+    #: or to -1 to use the value set in
+    #: ``Request.max_body_length``. The default is -1.
+    #:
+    #: Example::
+    #:
+    #:    WebSocket.max_message_length = 4 * 1024  # up to 4KB messages
+    max_message_length = -1
+
     def __init__(self, request):
         self.request = request
         self.closed = False
 
-    def handshake(self):
+    async def handshake(self):
         response = self._handshake_response()
-        self.request.sock.send(b'HTTP/1.1 101 Switching Protocols\r\n')
-        self.request.sock.send(b'Upgrade: websocket\r\n')
-        self.request.sock.send(b'Connection: Upgrade\r\n')
-        self.request.sock.send(
+        await self.request.sock[1].awrite(
+            b'HTTP/1.1 101 Switching Protocols\r\n')
+        await self.request.sock[1].awrite(b'Upgrade: websocket\r\n')
+        await self.request.sock[1].awrite(b'Connection: Upgrade\r\n')
+        await self.request.sock[1].awrite(
             b'Sec-WebSocket-Accept: ' + response + b'\r\n\r\n')
 
-    def receive(self):
+    async def receive(self):
+        """Receive a message from the client."""
         while True:
-            opcode, payload = self._read_frame()
+            opcode, payload = await self._read_frame()
             send_opcode, data = self._process_websocket_frame(opcode, payload)
             if send_opcode:  # pragma: no cover
-                self.send(data, send_opcode)
+                await self.send(data, send_opcode)
             elif data:  # pragma: no branch
                 return data
 
-    def send(self, data, opcode=None):
+    async def send(self, data, opcode=None):
+        """Send a message to the client.
+
+        :param data: the data to send, given as a string or bytes.
+        :param opcode: a custom frame opcode to use. If not given, the opcode
+                       is ``TEXT`` or ``BINARY`` depending on the type of the
+                       data.
+        """
         frame = self._encode_websocket_frame(
             opcode or (self.TEXT if isinstance(data, str) else self.BINARY),
             data)
-        self.request.sock.send(frame)
+        await self.request.sock[1].awrite(frame)
 
-    def close(self):
+    async def close(self):
+        """Close the websocket connection."""
         if not self.closed:  # pragma: no cover
             self.closed = True
-            self.send(b'', self.CLOSE)
+            await self.send(b'', self.CLOSE)
 
     def _handshake_response(self):
         connection = False
@@ -70,7 +103,7 @@ class WebSocket:
         fin = header[0] & 0x80
         opcode = header[0] & 0x0f
         if fin == 0 or opcode == cls.CONT:  # pragma: no cover
-            raise OSError(32, 'Continuation frames not supported')
+            raise WebSocketError('Continuation frames not supported')
         has_mask = header[1] & 0x80
         length = header[1] & 0x7f
         if length == 126:
@@ -85,7 +118,7 @@ class WebSocket:
         elif opcode == self.BINARY:
             pass
         elif opcode == self.CLOSE:
-            raise OSError(32, 'Websocket connection closed')
+            raise WebSocketError('Websocket connection closed')
         elif opcode == self.PING:
             return self.PONG, payload
         elif opcode == self.PONG:  # pragma: no branch
@@ -109,23 +142,30 @@ class WebSocket:
         frame.extend(payload)
         return frame
 
-    def _read_frame(self):
-        header = self.request.sock.recv(2)
+    async def _read_frame(self):
+        header = await self.request.sock[0].read(2)
         if len(header) != 2:  # pragma: no cover
-            raise OSError(32, 'Websocket connection closed')
+            raise WebSocketError('Websocket connection closed')
         fin, opcode, has_mask, length = self._parse_frame_header(header)
-        if length < 0:
-            length = self.request.sock.recv(-length)
+        if length == -2:
+            length = await self.request.sock[0].read(2)
             length = int.from_bytes(length, 'big')
+        elif length == -8:
+            length = await self.request.sock[0].read(8)
+            length = int.from_bytes(length, 'big')
+        max_allowed_length = Request.max_body_length \
+            if self.max_message_length == -1 else self.max_message_length
+        if length > max_allowed_length:
+            raise WebSocketError('Message too large')
         if has_mask:  # pragma: no cover
-            mask = self.request.sock.recv(4)
-        payload = self.request.sock.recv(length)
+            mask = await self.request.sock[0].read(4)
+        payload = await self.request.sock[0].read(length)
         if has_mask:  # pragma: no cover
             payload = bytes(x ^ mask[i % 4] for i, x in enumerate(payload))
         return opcode, payload
 
 
-def websocket_upgrade(request):
+async def websocket_upgrade(request):
     """Upgrade a request handler to a websocket connection.
 
     This function can be called directly inside a route function to process a
@@ -133,22 +173,43 @@ def websocket_upgrade(request):
     verified. The function returns the websocket object::
 
         @app.route('/echo')
-        def echo(request):
+        async def echo(request):
             if not authenticate_user(request):
                 abort(401)
-            ws = websocket_upgrade(request)
+            ws = await websocket_upgrade(request)
             while True:
-                message = ws.receive()
-                ws.send(message)
+                message = await ws.receive()
+                await ws.send(message)
     """
     ws = WebSocket(request)
-    ws.handshake()
+    await ws.handshake()
 
     @request.after_request
-    def after_request(request, response):
+    async def after_request(request, response):
         return Response.already_handled
 
     return ws
+
+
+def websocket_wrapper(f, upgrade_function):
+    async def wrapper(request, *args, **kwargs):
+        ws = await upgrade_function(request)
+        try:
+            await f(request, ws, *args, **kwargs)
+        except OSError as exc:
+            if exc.errno not in MUTED_SOCKET_ERRORS:  # pragma: no cover
+                raise
+        except WebSocketError:
+            pass
+        except Exception as exc:
+            print_exception(exc)
+        finally:  # pragma: no cover
+            try:
+                await ws.close()
+            except Exception:
+                pass
+        return Response.already_handled
+    return wrapper
 
 
 def with_websocket(f):
@@ -160,18 +221,9 @@ def with_websocket(f):
 
         @app.route('/echo')
         @with_websocket
-        def echo(request, ws):
+        async def echo(request, ws):
             while True:
-                message = ws.receive()
-                ws.send(message)
+                message = await ws.receive()
+                await ws.send(message)
     """
-    def wrapper(request, *args, **kwargs):
-        ws = websocket_upgrade(request)
-        try:
-            f(request, ws, *args, **kwargs)
-            ws.close()  # pragma: no cover
-        except OSError as exc:
-            if exc.errno not in [32, 54, 104]:  # pragma: no cover
-                raise
-        return ''
-    return wrapper
+    return websocket_wrapper(f, websocket_upgrade)

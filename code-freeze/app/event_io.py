@@ -40,7 +40,6 @@ class EventIO:
                     logger.error(f"event exceeds maximum permitted message size ({len(msg)} > {_MAX_EVENT_SIZE} Bytes), rejected")
                 event = json.loads(msg)
                 if event.get('type') == 'ping': 
-                    # await event_bus.post(type='pong')
                     event['type'] = 'pong'
                     await self._send(event)
                 else:

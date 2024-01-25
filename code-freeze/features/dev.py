@@ -37,6 +37,7 @@ class _DUP(io.IOBase):
 
             await asyncio.sleep_ms(100)
 
+
 async def _main():
     global _DUPTERM
     await _DUPTERM.run()

@@ -1,7 +1,7 @@
 from esp32 import Partition           # type: ignore
 from urllib.urequest import urlopen   # type: ignore
 
-from .wifi import wifi
+from features.wifi import wifi
 from app import event_bus
 from ota32 import OTA
 

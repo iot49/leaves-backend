@@ -176,3 +176,6 @@ async def pair(
         await connection._pair_event.wait()
         # TODO: Allow the passkey action to return to here and
         # invoke a callback or task to process the action.
+
+
+__version__ = '0.2.0'

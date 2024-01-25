@@ -177,3 +177,6 @@ async def advertise(
         # DeviceTimeout waiting for connection.
         ble.gap_advertise(None)
         raise
+
+
+__version__ = '0.2.0'

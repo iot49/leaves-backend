@@ -1,5 +1,7 @@
+code/certs/
 secrets.yaml
 default_config.py
+certs
 
 # don't commit for now
 jupyter
