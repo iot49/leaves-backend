@@ -47,19 +47,23 @@ build: version
 # generic Micropython VM for esp32
 build-generic:
 	@echo mpy-cross
-	docker run --rm -v .:/project -w /project espressif/idf:v5.0.4 \
-		bash -c " \
-			cd micropython; \
-			make V=1 -C mpy-cross; \
-		"
+	cd micropython; make V=1 -C mpy-cross; cd ..
 	@echo esp32/generic
-	docker run --rm -v .:/project -w /project espressif/idf:v5.0.4 \
+	docker run --rm -v .:/project -w /project espressif/idf:v5.1 \
 		bash -c " \
 			cd micropython/ports/esp32; \
 			make clean IDF_TARGET=esp32s3; \
 			make submodules; \
 			make V=1 IDF_TARGET=esp32s3; \
 		"
+
+# generic Micropython VM for esp32
+build-generic-XXXX:
+	@echo mpy-cross
+	cd micropython; make V=1 -C mpy-cross; cd ..
+	@echo esp32/generic
+	docker run --rm -v .:/project -w /project espressif/idf:v5.0.4 \
+		bash -c "cd micropython/ports/esp32; make clean; make submodules; make V=1 IDF_TARGET=esp32s3"
 
 # update version in code-freeze to today's date
 version:

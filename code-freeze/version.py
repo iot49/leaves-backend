@@ -1,2 +1,2 @@
 # automatically updated by Makefile
-VERSION = "2024.01.24"
+VERSION = "2024.01.25"

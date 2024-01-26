@@ -2,8 +2,10 @@ import asyncio
 import logging
 import ssl
 import time  # type: ignore
+import timestamp
 
 from app import event_io
+print("FIX user_features.webserver: change import to from features import wifi")
 from user_features.wifi import wifi
 
 from microdot import Microdot, Request
@@ -21,7 +23,11 @@ webapp = Microdot()
 
 @webapp.get('/')
 async def hello(request):
-    return f"RV webapp\nserved with secure Let's Encrypt Certificate!\n{time.time()}\n"
+    return f"""RV webapp
+served with secure Let's Encrypt Certificate!
+{timestamp.to_isodate(time.time())}
+timestamp = {time.time()}
+"""
 
 @webapp.get('/ping')
 async def test(request):
@@ -36,10 +42,9 @@ async def test(request):
 @webapp.get('/ws')
 @with_websocket
 async def websocket(request, ws):
-    print("websocket ...")
     await event_io.serve(ws)
 
-def init(host='0.0.0.0', port=80, debug=False):
+def init(host='0.0.0.0', port=443, debug=False):
     # config returns strings!
     port=int(port)
     if isinstance(debug, str):
@@ -49,14 +54,9 @@ def init(host='0.0.0.0', port=80, debug=False):
         async with wifi:
             logger.info(f"serving @ https://{wifi.hostname} ({wifi.ip})")
             if debug: print(f"serving @ https://{wifi.hostname} ({wifi.ip})")
-            sslctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-            sslctx.load_cert_chain('/certs/le-cert.der', '/certs/le-key.der')
-            # Does this even make sense? Veryfy the client's certificate?
-            # Chrome: dev.backend.leaf49.org didn’t accept your login certificate, or one may not have been provided.
-            # sslctx.verify_mode = ssl.CERT_REQUIRED
-            # sslctx.load_verify_locations(cafile="/certs/le-ca-chain.der")
-            port=443
             try:
+                sslctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+                sslctx.load_cert_chain('/certs/le-cert.der', '/certs/le-key.der')
                 await webapp.start_server(host=host, port=port, debug=debug, ssl=sslctx)
             except Exception as e:
                 logger.exception("***** Webserver", e)
