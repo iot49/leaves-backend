@@ -5,6 +5,7 @@ import time  # type: ignore
 import timestamp
 
 from app import event_io
+print("FIX mac /private/etc/hosts REMOVE entry for 'dev.backend.leaf49.org'")
 print("FIX user_features.webserver: change import to from features import wifi")
 from user_features.wifi import wifi
 
