@@ -1,16 +1,18 @@
 import asyncio
 import logging
 import ssl
+import gc
 import time  # type: ignore
 import timestamp
 
 from app import event_io
-print("FIX mac /private/etc/hosts REMOVE entry for 'dev.backend.leaf49.org'")
-print("FIX user_features.webserver: change import to from features import wifi")
-from user_features.wifi import wifi
+from features.wifi import wifi
 
 from microdot import Microdot, Request
 from microdot.websocket import with_websocket
+
+print("FIX mac /private/etc/hosts REMOVE entry for 'dev.backend.leaf49.org' (webserver.py)")
+
     
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -21,6 +23,16 @@ Request.max_body_length    =   64 * 1024
 Request.max_readline       =    8 * 1024
 
 webapp = Microdot()
+
+
+# FIX gc before and after each request to fix (?) ssl memory issue
+@webapp.before_request
+async def collect1(request):
+    gc.collect()
+
+@webapp.after_request
+async def collect2(request, response):
+    gc.collect()
 
 @webapp.get('/')
 async def hello(request):

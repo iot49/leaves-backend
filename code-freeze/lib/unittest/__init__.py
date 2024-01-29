@@ -300,9 +300,10 @@ class TestResult:
         return self.errorsNum == 0 and self.failuresNum == 0
 
     def printErrors(self):
-        print()
-        self.printErrorList(self.errors)
-        self.printErrorList(self.failures)
+        if self.errors or self.failures:
+            print()
+            self.printErrorList(self.errors)
+            self.printErrorList(self.failures)
 
     def printErrorList(self, lst):
         sep = "----------------------------------------------------------------------"
@@ -460,3 +461,6 @@ def main(module="__main__", testRunner=None):
     suite = TestSuite(module.__name__)
     suite._load_module(module)
     return testRunner.run(suite)
+
+
+__version__ = '0.10.3'

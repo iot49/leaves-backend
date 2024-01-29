@@ -1,6 +1,7 @@
 import asyncio
 import timestamp
 import logging
+import gc
 from . import event_filter
 
 logger = logging.getLogger(__name__)
@@ -22,6 +23,8 @@ class _EventBus():
         self._total_events += 1
         # dev.run (and maybe other tasks) "crash silently" without this delay
         await asyncio.sleep_ms(10)
+        # FIX: ssl memory issue
+        gc.collect()
  
     async def post_response(self, event, response):
         event = event.copy()

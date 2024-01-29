@@ -4,6 +4,7 @@ import hmac
 import json
 from time import time
 
+
 def _to_b64url(data):
     return (
         binascii.b2a_base64(data)
@@ -76,3 +77,6 @@ def decode(token, key, algorithms=["HS256"]):
             raise exceptions.ExpiredSignatureError
 
     return payload
+
+
+__version__ = '0.1.0'

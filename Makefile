@@ -37,33 +37,33 @@ build: version
 	docker run --rm -v .:/project -w /project espressif/idf:v5.0.4 \
 		bash -c " \
 			cd micropython/ports/esp32; \
+			make clean BOARD_DIR=${BOARD_DIR}; \
+			make V=1 BOARD=ESP32_S3_WROOM_1_N16R8 FROZEN_MANIFEST=${FROZEN_MANIFEST}"
+
+# build custom Micropython VM with code-freeze built in
+build-backup: version
+	zsh -c ./bin/make_default_config.py
+	@echo copy board spec and partition table
+	cp -a mp/boards/ESP32_S3_WROOM_1_N16R8 micropython/ports/esp32/boards 
+	cp -a mp/boards/ESP32_S3_WROOM_1_N16R8/partitions-S3-N16-custom.csv micropython/ports/esp32
+	@echo compile
+	docker run --rm -v .:/project -w /project espressif/idf:v5.0.4 \
+		bash -c " \
+			cd micropython/ports/esp32; \
 			ls -l .; \
 			make clean IDF_TARGET=esp32s3 BOARD_DIR=${BOARD_DIR}; \
-			make V=1 IDF_TARGET=esp32s3 \
+			make V=1 \
 				BOARD_DIR=${BOARD_DIR} \
 				USER_C_MODULES=${USER_C_MODULES} \
 				FROZEN_MANIFEST=${FROZEN_MANIFEST}"
 
 # generic Micropython VM for esp32
-build-generic:
-	@echo mpy-cross
-	cd micropython; make V=1 -C mpy-cross; cd ..
-	@echo esp32/generic
-	docker run --rm -v .:/project -w /project espressif/idf:v5.1 \
-		bash -c " \
-			cd micropython/ports/esp32; \
-			make clean IDF_TARGET=esp32s3; \
-			make submodules; \
-			make V=1 IDF_TARGET=esp32s3; \
-		"
-
-# generic Micropython VM for esp32
-build-generic-XXXX:
+build-generic-s3:
 	@echo mpy-cross
 	cd micropython; make V=1 -C mpy-cross; cd ..
 	@echo esp32/generic
 	docker run --rm -v .:/project -w /project espressif/idf:v5.0.4 \
-		bash -c "cd micropython/ports/esp32; make clean; make submodules; make V=1 IDF_TARGET=esp32s3"
+		bash -c "cd micropython/ports/esp32; make clean; make submodules; make V=1 BOARD=ESP32_GENERIC_S3"
 
 # update version in code-freeze to today's date
 version:
@@ -76,7 +76,7 @@ version:
 download-micropython:
 	git clone https://github.com/micropython/micropython.git
 
-micropython:
+micropython: download-micropython
 	cd micropython; \
 	cd mpy-cross; make; cd ..; \
 	cd ports/unix; make submodules; make; cd ../..; \
@@ -89,27 +89,26 @@ update-micropython: micropython
 
 # download libraries
 TARGET := code
-# TARGET := code/lib/microdot
-MPY    := micropython/ports/unix/build-standard/micropython -m mip install --no-mpy --target ${TARGET}
+TARGET_M := code/lib/microdot
+MPY     := micropython/ports/unix/build-standard/micropython -m mip install --no-mpy --target code/lib
+MPY_DOT := micropython/ports/unix/build-standard/micropython -m mip install --no-mpy --target code/lib/microdot
 
 lib:
-	${MPY} requests
-	${MPY} ntptime
-
-lib2:
-	${MPY} urllib.urequest
+	${MPY} datetime
+	${MPY} hmac
+	${MPY} pyjwt
+	${MPY} unittest
 	${MPY} aioble
-
-lib-update:
+	${MPY} aiohttp
+	${MPY} urllib.urequest
 	# microdot webserver
-	${MPY} github:miguelgrinberg/microdot/src/microdot/__init__.py
-	${MPY} github:miguelgrinberg/microdot/src/microdot/microdot.py
-	${MPY} github:miguelgrinberg/microdot/src/microdot/websocket.py
-	${MPY} github:miguelgrinberg/microdot/src/microdot/session.py
-	${MPY} github:miguelgrinberg/microdot/src/microdot/asgi.py
-	${MPY} github:miguelgrinberg/microdot/src/microdot/wsgi.py
-	${MPY} github:miguelgrinberg/microdot/src/microdot/sse.py
-	${MPY} github:miguelgrinberg/microdot/src/microdot/cors.py
-	${MPY} github:miguelgrinberg/microdot/src/microdot/jinja.py
-	${MPY} github:miguelgrinberg/microdot/src/microdot/utemplate.py
-	${MPY} github:miguelgrinberg/microdot/src/microdot/test_client.py
+	${MPY_DOT} github:miguelgrinberg/microdot/src/microdot/__init__.py
+	${MPY_DOT} github:miguelgrinberg/microdot/src/microdot/microdot.py
+	${MPY_DOT} github:miguelgrinberg/microdot/src/microdot/websocket.py
+	${MPY_DOT} github:miguelgrinberg/microdot/src/microdot/session.py
+	${MPY_DOT} github:miguelgrinberg/microdot/src/microdot/sse.py
+	${MPY_DOT} github:miguelgrinberg/microdot/src/microdot/cors.py
+	${MPY_DOT} github:miguelgrinberg/microdot/src/microdot/jinja.py
+	${MPY_DOT} github:miguelgrinberg/microdot/src/microdot/utemplate.py
+	${MPY_DOT} github:miguelgrinberg/microdot/src/microdot/test_client.py
+	cp -a code/lib/ code-freeze/lib

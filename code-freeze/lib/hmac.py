@@ -85,3 +85,6 @@ class HMAC:
 
 def new(key, msg=None, digestmod=None):
     return HMAC(key, msg, digestmod)
+
+
+__version__ = '3.4.3'
